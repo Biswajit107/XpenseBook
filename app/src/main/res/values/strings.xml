@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Xpense Book</string>
+    <string name="action_settings">Settings</string>
+    <string name="total_expense_label">Total Expense</string>
+    <string name="total_debit">Total Debit</string>
+    <string name="total_credit">Total Credit</string>
+    <string name="tab_label1">Summary</string>
+    <string name="tab_label2">Detailed View</string>
+    <string name="tab_label3">Analysis</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+</resources>
