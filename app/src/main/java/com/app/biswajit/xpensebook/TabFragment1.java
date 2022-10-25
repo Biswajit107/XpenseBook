@@ -135,27 +135,35 @@ public class TabFragment1 extends Fragment implements Updatable{
         GetAsyncTask asyncTask = new GetAsyncTask(appDb.messageDao());
         List<Message> messages = new ArrayList<>();
         try {
-            messages = (List<Message>)asyncTask.execute("",new Message()).get() ;
+            messages = (List<Message>) asyncTask.execute("", new Message()).get();
             messages = messages != null ? messages : new ArrayList<>();
-        } catch (ExecutionException e) {
+        }
+        catch (ExecutionException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
         List<Expense> expenses = new ArrayList<>();
         List<Integer> messageIds = new ArrayList<>();
-        for(Message message : messages){
+        for (Message message : messages) {
             Expense expense = new Expense();
-            if(!message.messageConent.contains("credit") || (message.messageConent.contains("credit") && (message.messageConent.contains("Payment") && message.messageConent.contains("Debit Card")))) {
-                expense = parseMessageAndPrepareExpense(message);
-                expenses.add(expense);
-                messageIds.add(message.mid);
+            try {
+                if (!(message.messageConent.contains("credit") || message.messageConent.contains("will be debited"))
+                        || (message.messageConent.contains("credit")
+                        && (message.messageConent.contains("Payment") && message.messageConent.contains("Debit Card")))) {
+                    expense = parseMessageAndPrepareExpense(message);
+                    expenses.add(expense);
+                    messageIds.add(message.mid);
+                }
+            }
+            catch (NumberFormatException ex){
+                Log.i(getClass().getName(), ex.getLocalizedMessage());
             }
         }
-        if(expenses != null && expenses.size() > 0) {
+        if (expenses != null && expenses.size() > 0) {
             new InsertAsyncTask(appDb.expenseDao()).execute(expenses, new Expense());
         }
-        if(messageIds != null && messageIds.size() > 0) {
+        if (messageIds != null && messageIds.size() > 0) {
             new UpdateAsyncTask(appDb.messageDao()).execute(messageIds, new Message());
         }
     }

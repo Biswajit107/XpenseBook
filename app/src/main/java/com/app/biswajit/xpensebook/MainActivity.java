@@ -129,6 +129,10 @@ public class MainActivity extends AppCompatActivity implements MessageListener{
 ////                AppDatabase.class, "database-name").build();
         appDb = AppDatabase.getDatabase(getApplicationContext());
         //binding = DataBindingUtil.setContentView(this, R.layout.activity_main);
+
+        MyService myService = new MyService(appDb.messageDao());
+        myService.getAllSms(this.getApplicationContext());
+
         processMessage();
         readExpenses();
         //getMessage(binding);
@@ -188,20 +192,28 @@ public class MainActivity extends AppCompatActivity implements MessageListener{
         }
         List<Expense> expenses = new ArrayList<>();
         List<Integer> messageIds = new ArrayList<>();
-        for(Message message : messages){
+
+        for (Message message : messages) {
             Expense expense = new Expense();
-            if(!message.messageConent.contains("credit")) {
-                expense = parseMessageAndPrepareExpense(message);
-                expenses.add(expense);
-                messageIds.add(message.mid);
+            try {
+                if (message != null && !(message.messageConent.contains("credit")
+                        || message.messageConent.contains("will be debited"))) {
+                    expense = parseMessageAndPrepareExpense(message);
+                    expenses.add(expense);
+                    messageIds.add(message.mid);
+                }
+            }
+            catch (NumberFormatException ex){
+                Log.i(getClass().getName(), ex.getLocalizedMessage());
             }
         }
-        if(expenses != null && expenses.size() > 0) {
+        if (expenses != null && expenses.size() > 0) {
             new InsertAsyncTask(appDb.expenseDao()).execute(expenses, new Expense());
         }
-        if(messageIds != null && messageIds.size() > 0) {
+        if (messageIds != null && messageIds.size() > 0) {
             new UpdateAsyncTask(appDb.messageDao()).execute(messageIds, new Message());
         }
+
     }
 
     private Expense parseMessageAndPrepareExpense(Message message) {
@@ -278,9 +290,9 @@ public class MainActivity extends AppCompatActivity implements MessageListener{
     @Override
     public void messageReceived(SmsMessage smsMessage) {
 //        Toast.makeText(this, "New Message Received: " + message, Toast.LENGTH_SHORT).show();
-        String sendor = smsMessage.getOriginatingAddress();
+        String sender = smsMessage.getOriginatingAddress();
         String message = smsMessage.getMessageBody();
-        if((sendor.contains("9668529132") || sendor.contains(SENDER_BANK_HDFC_0) || sendor.contains(SENDER_BANK_HDFC_0) || sendor.contains(SENDER_BANK_HDFC_1)) && (message.contains("debit") || message.contains("credit") || message.contains("spent") || (message.contains("paying") && message.contains("NetBanking")) ||  (message.contains("Payment") && message.contains("Debit Card")))) {
+        if(MyService.shouldConsider(message, sender)){
 
             Message receivedSmsMessage = new Message();
             receivedSmsMessage.bankName = "HDFC Bank Ltd.";

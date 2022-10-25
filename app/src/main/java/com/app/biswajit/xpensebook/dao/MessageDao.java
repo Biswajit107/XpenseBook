@@ -33,4 +33,7 @@ public interface MessageDao {
 
     @Delete
     void delete(Message message);
+
+    @Query("SELECT * FROM message WHERE message_id IN (:msgId)")
+    Message findByMsgId(int msgId);
 }
