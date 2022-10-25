@@ -105,10 +105,9 @@ public class MyService extends Service {
             if (c.moveToFirst()) {
                 for (int j = 0; j < totalSMS; j++) {
                     int msgId = c.getInt(c.getColumnIndexOrThrow(Telephony.Sms._ID));
-                    String smsDate = c.getString(c.getColumnIndexOrThrow(Telephony.Sms.DATE));
+                    Long smsDate = c.getLong(c.getColumnIndexOrThrow(Telephony.Sms.DATE));
                     String sender = c.getString(c.getColumnIndexOrThrow(Telephony.Sms.ADDRESS));
                     String body = c.getString(c.getColumnIndexOrThrow(Telephony.Sms.BODY));
-                    Date dateFormat= new Date(Long.valueOf(smsDate));
                     String type;
                     switch (Integer.parseInt(c.getString(c.getColumnIndexOrThrow(Telephony.Sms.TYPE)))) {
                         case Telephony.Sms.MESSAGE_TYPE_INBOX:
@@ -117,7 +116,7 @@ public class MyService extends Service {
                             Message receivedSmsMessage = new Message();
                             msg.bankName = "HDFC Bank Ltd.";
                             msg.messageConent = body;
-                            msg.messageRecivedAt = new Timestamp(System.currentTimeMillis());
+                            msg.messageRecivedAt = new Timestamp(smsDate);
                             msg.msgId = msg.hashCode();
                             Message alreadyPresentMsg = null;
                             try {

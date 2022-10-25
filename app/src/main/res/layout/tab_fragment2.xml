@@ -6,9 +6,29 @@
     android:layout_height="match_parent"
     tools:context=".TabFragment2">
 
-    <de.codecrafters.tableview.TableView
-        android:id="@+id/tableView"
+<!--    <de.codecrafters.tableview.TableView-->
+<!--        android:id="@+id/tableView"-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="match_parent"-->
+<!--        />-->
+    <TableLayout
+        android:id="@+id/headerTableView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        />
+        android:padding="0dp"
+        android:stretchColumns="*">
+    </TableLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="38dp">
+        <TableLayout
+            android:id="@+id/expenseTableView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="0dp"
+            android:stretchColumns="*">
+        </TableLayout>
+    </ScrollView>
 </androidx.constraintlayout.widget.ConstraintLayout>
