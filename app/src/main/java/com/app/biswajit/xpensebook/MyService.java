@@ -1,5 +1,12 @@
 package com.app.biswajit.xpensebook;
 
+import static com.app.biswajit.xpensebook.constants.Constants.HDFC;
+import static com.app.biswajit.xpensebook.constants.Constants.HDFC_BANK;
+import static com.app.biswajit.xpensebook.constants.Constants.ICICI;
+import static com.app.biswajit.xpensebook.constants.Constants.ICICI_BANK;
+import static com.app.biswajit.xpensebook.constants.Constants.OTHER_BANK;
+import static com.app.biswajit.xpensebook.constants.Constants.SBI;
+import static com.app.biswajit.xpensebook.constants.Constants.SBI_BANK;
 import static com.app.biswajit.xpensebook.constants.Constants.SENDER_BANK_HDFC_0;
 import static com.app.biswajit.xpensebook.constants.Constants.SENDER_BANK_HDFC_1;
 import static com.app.biswajit.xpensebook.constants.Constants.SENDER_BANK_HDFC_3;
@@ -22,12 +29,18 @@ import android.util.Log;
 import android.widget.Toast;
 //import android.support.v4.app.NotificationCompat;NotificationCompat
 import java.sql.Timestamp;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
+import java.util.ListIterator;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
@@ -95,6 +108,9 @@ public class MyService extends Service {
 
         Calendar cal = Calendar.getInstance();
         cal.set(Calendar.DAY_OF_MONTH, 1);
+        cal.set(Calendar.HOUR_OF_DAY,0);
+        cal.set(Calendar.MINUTE,0);
+        cal.set(Calendar.SECOND,0);
         Calendar currentCal = Calendar.getInstance();
         String where = Telephony.Sms.DATE + " >= " + cal.getTimeInMillis() + " AND " + Telephony.Sms.DATE + " <= " + currentCal.getTimeInMillis() ;
         String order = "date ";
@@ -114,7 +130,7 @@ public class MyService extends Service {
                             type = "inbox";
                             Message msg = new Message();
                             Message receivedSmsMessage = new Message();
-                            msg.bankName = "HDFC Bank Ltd.";
+                            msg.bankName = getBankName(sender);
                             msg.messageConent = body;
                             msg.messageRecivedAt = new Timestamp(smsDate);
                             msg.msgId = msg.hashCode();
@@ -151,28 +167,21 @@ public class MyService extends Service {
     public static boolean shouldConsider(String message, String sender){
 
         return (sender.contains("9668529132")
-                || sender.contains(SENDER_BANK_HDFC_0)
-                || sender.contains(SENDER_BANK_HDFC_1)
-                || sender.contains(SENDER_BANK_HDFC_4)
-                || sender.contains(SENDER_BANK_HDFC_5)
-                || sender.contains(SENDER_BANK_HDFC_6)
-                || sender.contains(SENDER_BANK_HDFC_7)
-                || sender.contains(SENDER_BANK_HDFC_3))
+                || sender.contains(HDFC)
+                || sender.contains(ICICI)
+                || sender.contains(SBI))
                 && (message.contains("debit")
                 || message.contains("credit")
                 || message.contains("spent")
+                || message.contains("Money Transferred")
                 || (message.contains("paying") && message.contains("NetBanking"))
+                || (message.contains("withdrawn") && message.contains("Debit Card"))
                 || (message.contains("Payment") && message.contains("Debit Card")));
     }
 
     public Message getMessage(Message msg) throws ExecutionException, InterruptedException {
 
-        Callable<Message> callable = new Callable<Message>() {
-            @Override
-            public Message call() throws Exception {
-                return messageDao.findByMsgId(msg.msgId);
-            }
-        };
+        Callable<Message> callable = () -> messageDao.findByMsgId(msg.msgId);
 
         Future<Message> future = Executors.newSingleThreadExecutor().submit(callable);
 
@@ -181,17 +190,68 @@ public class MyService extends Service {
 
     public Boolean insertMessage(Message msg) throws ExecutionException, InterruptedException {
 
-        Callable<Boolean> callable = new Callable<Boolean>() {
-            @Override
-            public Boolean call() throws Exception {
-                messageDao.insertAll(msg);
-                return true;
-            }
+        Callable<Boolean> callable = () -> {
+            messageDao.insertAll(msg);
+            return true;
         };
 
         Future<Boolean> future = Executors.newSingleThreadExecutor().submit(callable);
 
         return future.get();
+    }
+
+    public static String getBankName(String sender) {
+
+        return sender.contains(HDFC) ? HDFC_BANK
+                : sender.contains(ICICI) ? ICICI_BANK
+                : sender.contains(SBI) ? SBI_BANK : OTHER_BANK;
+    }
+
+
+
+    public static Double extractAmount(String messageConent) {
+
+        String regEx1 = "Rs.(?:\\d+|\\d{1,2},(?:\\d{2},)*\\d{3})(?:\\.\\d{2})? ";
+        String regEx2 = "Rs. (?:\\d+|\\d{1,2},(?:\\d{2},)*\\d{3})(?:\\.\\d{2})? ";
+        String regEx3 = "Rs(?:\\d+|\\d{1,2},(?:\\d{2},)*\\d{3})(?:\\.\\d{2})? ";
+        String regEx4 = "Rs (?:\\d+|\\d{1,2},(?:\\d{2},)*\\d{3})(?:\\.\\d{2})? ";
+        String regEx5 = "INR.(?:\\d+|\\d{1,2},(?:\\d{2},)*\\d{3})(?:\\.\\d{2})? ";
+        String regEx6 = "INR. (?:\\d+|\\d{1,2},(?:\\d{2},)*\\d{3})(?:\\.\\d{2})? ";
+
+        String amountStr =  getAmount(messageConent,
+                Arrays.asList(regEx1,regEx2,regEx3,regEx4, regEx5, regEx6),
+                false,0);
+
+        return !"notfound".equals(amountStr) ? Double.parseDouble(amountStr.trim().replaceAll(",", "")) : 0.0;
+    }
+
+    private static String getAmount(String msg, List<String> regExpList, boolean found, int next) {
+
+        if(next >= regExpList.size()){
+            return "notfound";
+        }
+
+        Pattern pattern = Pattern.compile(regExpList.get(next));
+        Matcher matcher = pattern.matcher(msg);
+
+        String regEx = "(?:\\d+|\\d{1,2},(?:\\d{2},)*\\d{3})(?:\\.\\d{2})? ";
+        if(found){
+            pattern = Pattern.compile(regEx);
+            matcher = pattern.matcher(msg);
+            if(matcher.find()){
+                return matcher.group(0);
+            }
+        }
+        else {
+            if (matcher.find()) {
+                return getAmount(matcher.group(0),regExpList, true, 0);
+            }
+            else{
+                return getAmount(msg,regExpList, false, ++next);
+            }
+        }
+
+        return  "notfound";
     }
 
 }

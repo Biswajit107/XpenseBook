@@ -16,15 +16,8 @@ public interface ExpenseDao {
     @Query("SELECT * FROM expense")
     List<Expense> getAllExpense();
 
-    @Query("SELECT * FROM expense where strftime('%m', date(PAYMENT_AT/1000,'unixepoch','localtime')) = (:month) and strftime('%Y', date(PAYMENT_AT/1000,'unixepoch','localtime')) = (:year)")
+    @Query("SELECT distinct * FROM expense where strftime('%m', date(PAYMENT_AT/1000,'unixepoch','localtime')) = (:month) and strftime('%Y', date(PAYMENT_AT/1000,'unixepoch','localtime')) = (:year) order by PAYMENT_AT")
     List<Expense> getAllExpenseByMonth(String month, String year);
-
-//    @Query("SELECT * FROM expense WHERE eid IN (:messageIds)")
-//    List<Message> loadAllByIds(int[] messageIds);
-
-//    @Query("SELECT * FROM message WHERE first_name LIKE :first AND " +
-//            "last_name LIKE :last LIMIT 1")
-//    Message findByName(String first, String last);
 
     @Insert
     void insertAll(List<Expense> expenses);

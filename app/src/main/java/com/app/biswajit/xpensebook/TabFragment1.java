@@ -93,12 +93,14 @@ public class TabFragment1 extends Fragment implements Updatable{
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         setHasOptionsMenu(true);
         rootview = inflater.inflate(R.layout.tab_fragment1, container, false);
 
+        update();
         // Inflate the layout for this fragment
         return rootview;
     }
@@ -148,9 +150,11 @@ public class TabFragment1 extends Fragment implements Updatable{
         for (Message message : messages) {
             Expense expense = new Expense();
             try {
-                if (!(message.messageConent.contains("credit") || message.messageConent.contains("will be debited"))
-                        || (message.messageConent.contains("credit")
-                        && (message.messageConent.contains("Payment") && message.messageConent.contains("Debit Card")))) {
+                if (message != null
+                        && !((message.messageConent.contains("credit") && !message.messageConent.contains("debit")
+                        || ( (message.messageConent.contains("credit") && message.messageConent.contains("debit")
+                        && message.messageConent.indexOf("debit") > message.messageConent.indexOf("credit")))
+                        || message.messageConent.contains("will be debited")))) {
                     expense = parseMessageAndPrepareExpense(message);
                     expenses.add(expense);
                     messageIds.add(message.mid);
@@ -172,15 +176,12 @@ public class TabFragment1 extends Fragment implements Updatable{
         Expense expense = new Expense();
         String messageContent = message.messageConent;
 
-        int beginIndex = messageContent.indexOf(AMOUNT_PARSING_KEYWORD_FROM) + AMOUNT_PARSING_KEYWORD_FROM.length();
-        int offset = messageContent.indexOf(AMOUNT_PARSING_KEYWORD_TO) - 1 ;
-        List<String> items = Arrays.asList(message.messageConent.split("\\s* \\s*"));
-        int index = items.indexOf("Rs") > -1 ? items.indexOf("Rs"):items.indexOf("Rs.") > -1?items.indexOf("Rs."):items.indexOf("INR") > -1 ? items.indexOf("INR") : items.indexOf("spent") > -1 ? items.indexOf("spent"):items.indexOf("paying") > -1 ? items.indexOf("paying"):-1;
-        String amount = index > -1 && (items.get(index).equals("spent") || items.get(index).equals("paying"))? items.get(index+1).substring("Rs.".length()):index > -1 ?items.get(index+1):"notfound";
+        expense.amount =  MyService.extractAmount(message.messageConent);
 
-        expense.amount = !"notfound".equals(amount) ? Double.parseDouble(amount.trim().replaceAll(",", "")) : 0.0;
+        List<String> items = Arrays.asList(message.messageConent.split("\\s* \\s*"));
+
         //Parsing for source
-        index = items.indexOf("from") > -1 ? items.indexOf("from"):items.indexOf("via") > -1?items.indexOf("via"):-1;
+        int index = items.indexOf("from") > -1 ? items.indexOf("from"):items.indexOf("via") > -1?items.indexOf("via"):-1;
         int secondaryIndex = Math.min(items.indexOf("on") > -1 ? items.indexOf("on"):-1
                 ,items.indexOf("at") > -1 ? items.indexOf("at"):-1);
         if(items.indexOf("on") > -1 && items.indexOf("at") > -1) {
@@ -219,18 +220,6 @@ public class TabFragment1 extends Fragment implements Updatable{
         }
 
         expense.paymentDestination = parsedString;
-
-
-//        expense.amount = Double.parseDouble(messageContent.substring(beginIndex,offset).trim());
-//
-//        beginIndex = messageContent.indexOf(PAYMENT_SOURCE_PARSING_KEYWORD_FROM) + PAYMENT_SOURCE_PARSING_KEYWORD_FROM.length();
-//        offset = messageContent.indexOf(PAYMENT_SOURCE_PARSING_KEYWORD_TO) - 1 ;
-//        expense.paymentSource = messageContent.substring(beginIndex,offset).trim();
-//
-//        beginIndex = messageContent.indexOf(PAYMENT_DESTINATION_PARSING_KEYWORD_FROM) + PAYMENT_DESTINATION_PARSING_KEYWORD_FROM.length();
-//        offset = messageContent.indexOf(PAYMENT_DESTINATION_PARSING_KEYWORD_TO) - 1 ;
-//        expense.paymentDestination = message.bankName + " : " + messageContent.substring(beginIndex,offset).trim();
-
         expense.paymentType = messageContent.contains(PAYMENT_TYPE_KEY_WORD) || messageContent.contains("spent") || messageContent.contains("paying") ? DEBIT_KEY_WORD : "";
         expense.paymentAt = message.messageRecivedAt;
         expense.messageId = message.mid;

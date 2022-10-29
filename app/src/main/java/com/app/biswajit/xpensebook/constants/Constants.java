@@ -23,4 +23,14 @@ public class Constants {
     public static final String SENDER_BANK_HDFC_7 = "VD-HDFCBK";
 
 
+    public static final String HDFC = "HDFC";
+    public static final String ICICI = "ICICI";
+    public static final String SBI = "SBI";
+
+    public static final String HDFC_BANK = "HDFC Bank";
+    public static final String ICICI_BANK = "ICICI Bank";
+    public static final String SBI_BANK = "ICICI Bank";
+    public static final String OTHER_BANK = "Other";
+
+
 }

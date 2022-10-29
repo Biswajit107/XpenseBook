@@ -117,6 +117,12 @@ public class TabFragment2 extends Fragment implements Updatable{
         Log.i("Fragment2", "Inside Fragment2");
 
         startLoadData();
+
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    void loadData(){
+
         int leftRowMargin=0;
         int topRowMargin=0;
         int rightRowMargin=0;
@@ -132,7 +138,6 @@ public class TabFragment2 extends Fragment implements Updatable{
         int rows = data.size();
 
         TextView textSpacer = null;
-        mTableLayout.removeAllViews();
 
         setHeader(smallTextSize);
 
@@ -208,9 +213,10 @@ public class TabFragment2 extends Fragment implements Updatable{
             tr.addView(tv2);
             tr.addView(tv4);
             if (i > -1) {
-                tr.setOnClickListener(new View.OnClickListener() {
-                    public void onClick(View v) {
-                        TableRow tr = (TableRow) v;
+                tr.setOnLongClickListener(new View.OnLongClickListener() {
+                    @Override
+                    public boolean onLongClick(View view) {
+                        return false;
                     }
                 });
             }
@@ -239,7 +245,6 @@ public class TabFragment2 extends Fragment implements Updatable{
 
         }
         mProgressBar.hide();
-
     }
 
     private void setHeader(int smallTextSize) {
@@ -334,8 +339,6 @@ public class TabFragment2 extends Fragment implements Updatable{
                     return messageDao.findByMessageProcessed(); // This line throws the exception
                 }
                 else if(params[1] instanceof Expense){
-                    LocalDate currentdate = LocalDate.now();
-                    //String currentMonth = currentdate.getMonthValue() < 10 ? "0" + String.valueOf(currentdate.getMonthValue()) : String.valueOf(currentdate.getMonthValue()) ;
                     String yearMonth = YearMonth.now().toString();
                     String currentMonth = yearMonth.substring(5);
                     String currentYear = Year.now().toString();
@@ -352,10 +355,38 @@ public class TabFragment2 extends Fragment implements Updatable{
     }
 
     public void startLoadData() {
+        mTableLayout.removeAllViews();
         mProgressBar.setCancelable(false);
         mProgressBar.setMessage("Fetching Expenses..");
         mProgressBar.setProgressStyle(ProgressDialog.STYLE_SPINNER);
         mProgressBar.show();
-        //new LoadDataTask().execute(0);
+        new LoadDataTask().execute(0);
+    }
+
+    class LoadDataTask extends AsyncTask<Integer, Integer, String> {
+        @Override
+        protected String doInBackground(Integer... params) {
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            return "Task Completed.";
+        }
+
+        @RequiresApi(api = Build.VERSION_CODES.N)
+        @Override
+        protected void onPostExecute(String result) {
+//            mProgressBar.hide();
+            loadData();
+        }
+
+        @Override
+        protected void onPreExecute() {
+        }
+
+        @Override
+        protected void onProgressUpdate(Integer... values) {
+        }
     }
 }

@@ -13,6 +13,8 @@ import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Adapter;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.app.biswajit.xpensebook.dao.ExpenseDao;
@@ -39,6 +41,8 @@ import java.util.concurrent.ExecutionException;
 import androidx.appcompat.widget.Toolbar;
 import androidx.databinding.DataBindingUtil;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -48,11 +52,18 @@ import androidx.viewpager.widget.ViewPager;
 import static com.app.biswajit.xpensebook.constants.Constants.AMOUNT_PARSING_KEYWORD_FROM;
 import static com.app.biswajit.xpensebook.constants.Constants.AMOUNT_PARSING_KEYWORD_TO;
 import static com.app.biswajit.xpensebook.constants.Constants.DEBIT_KEY_WORD;
+import static com.app.biswajit.xpensebook.constants.Constants.HDFC;
+import static com.app.biswajit.xpensebook.constants.Constants.HDFC_BANK;
+import static com.app.biswajit.xpensebook.constants.Constants.ICICI;
+import static com.app.biswajit.xpensebook.constants.Constants.ICICI_BANK;
+import static com.app.biswajit.xpensebook.constants.Constants.OTHER_BANK;
 import static com.app.biswajit.xpensebook.constants.Constants.PAYMENT_DESTINATION_PARSING_KEYWORD_FROM;
 import static com.app.biswajit.xpensebook.constants.Constants.PAYMENT_DESTINATION_PARSING_KEYWORD_TO;
 import static com.app.biswajit.xpensebook.constants.Constants.PAYMENT_SOURCE_PARSING_KEYWORD_FROM;
 import static com.app.biswajit.xpensebook.constants.Constants.PAYMENT_SOURCE_PARSING_KEYWORD_TO;
 import static com.app.biswajit.xpensebook.constants.Constants.PAYMENT_TYPE_KEY_WORD;
+import static com.app.biswajit.xpensebook.constants.Constants.SBI;
+import static com.app.biswajit.xpensebook.constants.Constants.SBI_BANK;
 import static com.app.biswajit.xpensebook.constants.Constants.SENDER_BANK_HDFC_0;
 import static com.app.biswajit.xpensebook.constants.Constants.SENDER_BANK_HDFC_1;
 
@@ -68,15 +79,6 @@ public class MainActivity extends AppCompatActivity implements MessageListener{
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-//        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-//        fab.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View view) {
-//                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-//                        .setAction("Action", null).show();
-//            }
-//        });
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -121,21 +123,18 @@ public class MainActivity extends AppCompatActivity implements MessageListener{
             }
         });
 
-
-
         //Register sms listener
         MessageReceiver.bindListener(this);
-//        appDb = Room.databaseBuilder(getApplicationContext(),
-////                AppDatabase.class, "database-name").build();
         appDb = AppDatabase.getDatabase(getApplicationContext());
-        //binding = DataBindingUtil.setContentView(this, R.layout.activity_main);
 
         MyService myService = new MyService(appDb.messageDao());
         myService.getAllSms(this.getApplicationContext());
 
         processMessage();
-        readExpenses();
-        //getMessage(binding);
+//        String totalExpense = readExpenses();
+//        viewPager.setOffscreenPageLimit(1);
+//        FragmentManager fragmentManager=getSupportFragmentManager();
+//        viewPager.setAdapter(new PagerAdapter(fragmentManager,3));
 
     }
 
@@ -147,9 +146,6 @@ public class MainActivity extends AppCompatActivity implements MessageListener{
                 comP1.update();
                 break;
             case 1:
-
-//                CompaniesInterest comP1 = (CompaniesInterest) viewpager.getAdapter().instantiateItem(viewpager, viewpager.getCurrentItem());
-//                comP1.refreshpage();
                 TabFragment2 comP2 = (TabFragment2) viewPager.getAdapter().instantiateItem(viewPager, position);
                 comP2.update();
                 break;
@@ -157,26 +153,24 @@ public class MainActivity extends AppCompatActivity implements MessageListener{
                 TabFragment3 comP3 = (TabFragment3) viewPager.getAdapter().instantiateItem(viewPager, position);
                 comP3.update();
                 break;
-//                TotalSelectedCompanies toTal = (TotalSelectedCompanies) viewpager.getAdapter().instantiateItem(viewpager, viewpager.getCurrentItem());
-//                toTal.refreshpage();
             default:
 
         }
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
-    private void readExpenses() {
+    private String readExpenses() {
         GetAsyncTask asyncTask = new GetAsyncTask(appDb.expenseDao());
         List<Expense> expenses = new ArrayList<>();
         try {
             expenses = (List<Expense>)asyncTask.execute("",new Expense()).get();
-            String totalExpense = expenses != null ? String.valueOf(expenses.stream().mapToDouble(i->i.amount).sum()) : "";
-            //binding.setTotalDebited(totalExpense);
+            return expenses != null ? String.valueOf(expenses.stream().mapToDouble(i->i.amount).sum()) : "";
         } catch (ExecutionException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+        return "";
     }
 
     private void processMessage() {
@@ -196,8 +190,11 @@ public class MainActivity extends AppCompatActivity implements MessageListener{
         for (Message message : messages) {
             Expense expense = new Expense();
             try {
-                if (message != null && !(message.messageConent.contains("credit")
-                        || message.messageConent.contains("will be debited"))) {
+                if (message != null
+                        && !((message.messageConent.contains("credit") && !message.messageConent.contains("debit")
+                        || ( (message.messageConent.contains("credit") && message.messageConent.contains("debit")
+                        && message.messageConent.indexOf("debit") > message.messageConent.indexOf("credit")))
+                        || message.messageConent.contains("will be debited")))) {
                     expense = parseMessageAndPrepareExpense(message);
                     expenses.add(expense);
                     messageIds.add(message.mid);
@@ -220,15 +217,12 @@ public class MainActivity extends AppCompatActivity implements MessageListener{
         Expense expense = new Expense();
         String messageContent = message.messageConent;
 
-        int beginIndex = messageContent.indexOf(AMOUNT_PARSING_KEYWORD_FROM) + AMOUNT_PARSING_KEYWORD_FROM.length();
-        int offset = messageContent.indexOf(AMOUNT_PARSING_KEYWORD_TO) - 1 ;
-        List<String> items = Arrays.asList(message.messageConent.split("\\s* \\s*"));
-        int index = items.indexOf("Rs") > -1 ? items.indexOf("Rs"):items.indexOf("Rs.") > -1?items.indexOf("Rs."):items.indexOf("INR") > -1 ? items.indexOf("INR") : items.indexOf("spent") > -1 ? items.indexOf("spent"):items.indexOf("paying") > -1 ? items.indexOf("paying"):-1;
-        String amount = index > -1 && (items.get(index).equals("spent") || items.get(index).equals("paying"))? items.get(index+1).substring("Rs.".length()):index > -1 ?items.get(index+1):"notfound";
+        expense.amount =  MyService.extractAmount(message.messageConent);
 
-        expense.amount = !"notfound".equals(amount) ? Double.parseDouble(amount.trim().replaceAll(",", "")) : 0.0;
+        List<String> items = Arrays.asList(message.messageConent.split("\\s* \\s*"));
+
         //Parsing for source
-        index = items.indexOf("from") > -1 ? items.indexOf("from"):items.indexOf("via") > -1?items.indexOf("via"):-1;
+        int index = items.indexOf("from") > -1 ? items.indexOf("from"):items.indexOf("via") > -1?items.indexOf("via"):-1;
         int secondaryIndex = Math.min(items.indexOf("on") > -1 ? items.indexOf("on"):-1
                 ,items.indexOf("at") > -1 ? items.indexOf("at"):-1);
         if(items.indexOf("on") > -1 && items.indexOf("at") > -1) {
@@ -289,19 +283,17 @@ public class MainActivity extends AppCompatActivity implements MessageListener{
 
     @Override
     public void messageReceived(SmsMessage smsMessage) {
-//        Toast.makeText(this, "New Message Received: " + message, Toast.LENGTH_SHORT).show();
         String sender = smsMessage.getOriginatingAddress();
         String message = smsMessage.getMessageBody();
         if(MyService.shouldConsider(message, sender)){
 
             Message receivedSmsMessage = new Message();
-            receivedSmsMessage.bankName = "HDFC Bank Ltd.";
+
+            receivedSmsMessage.bankName = MyService.getBankName(sender);
             receivedSmsMessage.messageConent = message;
             receivedSmsMessage.messageRecivedAt = new Timestamp(System.currentTimeMillis());
             new InsertAsyncTask(appDb.messageDao()).execute(receivedSmsMessage,new Message());
 
-            //messageViewModel.insert(receivedSmsMessage);
-            //db.messageDao().insertAll(recivedSmsMessage);
             Toast.makeText(this, "New Message Received and stored in DB", Toast.LENGTH_SHORT).show();
         }
     }
