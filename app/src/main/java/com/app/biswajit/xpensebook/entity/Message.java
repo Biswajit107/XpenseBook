@@ -32,14 +32,6 @@ public class Message {
     @TypeConverters({TimestampConverter.class})
     public Date messageRecivedAt;
 
-//    public Message(int mid, String bankName, String messageConent, Date messageRecivedAt) {
-//        this.mid = mid;
-//        this.bankName = bankName;
-//        this.messageConent = messageConent;
-//        this.messageRecivedAt = messageRecivedAt;
-//    }
-
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

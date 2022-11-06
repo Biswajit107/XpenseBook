@@ -6,15 +6,46 @@
     android:layout_height="match_parent"
     tools:context=".TabFragment1">
 
+    <LinearLayout
+        android:id="@+id/linearLayout2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <Button
+            android:id="@+id/datePicker"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_weight="1"
+            android:gravity="center_horizontal"
+            android:text="@string/select_date_range"
+            android:textAlignment="center">
+
+        </Button>
+
+        <TextView
+            android:id="@+id/dataRange"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginTop="10dp"
+            android:layout_weight="1"
+            android:gravity="left|center_vertical">
+
+        </TextView>
+
+    </LinearLayout>
+
+
     <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/l1"
         android:layout_width="296dp"
         android:layout_height="182dp"
-        android:layout_marginBottom="394dp"
-        android:layout_marginEnd="57dp"
-        android:layout_marginLeft="58dp"
-        android:layout_marginRight="57dp"
         android:layout_marginStart="58dp"
+        android:layout_marginLeft="58dp"
         android:layout_marginTop="155dp"
+        android:layout_marginEnd="57dp"
+        android:layout_marginRight="57dp"
+        android:layout_marginBottom="394dp"
         android:background="@drawable/box"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -25,12 +56,12 @@
             android:id="@+id/textView8"
             android:layout_width="290dp"
             android:layout_height="59dp"
-            android:layout_marginBottom="94dp"
-            android:layout_marginEnd="5dp"
-            android:layout_marginLeft="1dp"
-            android:layout_marginRight="5dp"
             android:layout_marginStart="1dp"
+            android:layout_marginLeft="1dp"
             android:layout_marginTop="28dp"
+            android:layout_marginEnd="5dp"
+            android:layout_marginRight="5dp"
+            android:layout_marginBottom="94dp"
             android:gravity="center"
             android:text="@string/total_debit"
             android:textColor="#4CAF50"
@@ -44,12 +75,12 @@
             android:id="@+id/totalExpense"
             android:layout_width="290dp"
             android:layout_height="59dp"
-            android:layout_marginBottom="16dp"
-            android:layout_marginEnd="3dp"
-            android:layout_marginLeft="3dp"
-            android:layout_marginRight="3dp"
             android:layout_marginStart="3dp"
+            android:layout_marginLeft="3dp"
             android:layout_marginTop="107dp"
+            android:layout_marginEnd="3dp"
+            android:layout_marginRight="3dp"
+            android:layout_marginBottom="16dp"
             android:gravity="center"
             android:text=""
             android:textColor="#4CAF50"
@@ -60,6 +91,7 @@
             app:layout_constraintTop_toTopOf="parent" />
 
         <View
+            android:id="@+id/view"
             style="@style/Divider"
             android:background="#000000"
             app:layout_constraintBottom_toBottomOf="parent"
@@ -68,20 +100,17 @@
             app:layout_constraintTop_toTopOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:layout_width="296dp"
-        android:layout_height="182dp"
-        android:layout_marginBottom="130dp"
-        android:layout_marginEnd="57dp"
-        android:layout_marginLeft="58dp"
-        android:layout_marginRight="57dp"
-        android:layout_marginStart="58dp"
-        android:layout_marginTop="419dp"
-        android:background="@drawable/box"
+    <Button
+        android:id="@+id/recalButton"
+        android:layout_width="100dp"
+        android:layout_height="70dp"
+        android:layout_marginStart="64dp"
+        android:layout_marginLeft="64dp"
+        android:layout_marginBottom="344dp"
+        android:background="@mipmap/recal"
+        android:tooltipText="@string/recalculate"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintStart_toStartOf="parent" />
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+
 </androidx.constraintlayout.widget.ConstraintLayout>

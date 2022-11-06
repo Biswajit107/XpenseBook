@@ -26,5 +26,7 @@ public class Expense {
     @ColumnInfo(name = "PAYMENT_AT")
     @TypeConverters({TimestampConverter.class})
     public Date paymentAt;
+    @ColumnInfo(name = "DELETE_FLAG")
+    public int deleteFlag;
 
 }

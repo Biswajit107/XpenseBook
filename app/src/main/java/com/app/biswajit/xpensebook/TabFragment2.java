@@ -1,37 +1,37 @@
 package com.app.biswajit.xpensebook;
 
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 
 import androidx.annotation.RequiresApi;
+import androidx.appcompat.widget.PopupMenu;
 import androidx.fragment.app.Fragment;
-import de.codecrafters.tableview.TableView;
-import de.codecrafters.tableview.model.TableColumnDpWidthModel;
-import de.codecrafters.tableview.toolkit.SimpleTableDataAdapter;
-import de.codecrafters.tableview.toolkit.SimpleTableHeaderAdapter;
 
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.app.biswajit.xpensebook.dao.ExpenseDao;
 import com.app.biswajit.xpensebook.dao.MessageDao;
 import com.app.biswajit.xpensebook.database.AppDatabase;
+import com.app.biswajit.xpensebook.entity.DateRange;
 import com.app.biswajit.xpensebook.entity.Expense;
 import com.app.biswajit.xpensebook.entity.Message;
 
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
-import java.time.LocalDate;
 import java.time.Year;
 import java.time.YearMonth;
 import java.util.ArrayList;
@@ -201,7 +201,7 @@ public class TabFragment2 extends Fragment implements Updatable{
 
             // add table row to Table Layout
             final TableRow tr = new TableRow(this.getContext());
-            tr.setId(i + 1);
+            tr.setId(row.eid);
             TableLayout.LayoutParams trParams = new
                     TableLayout.LayoutParams(0,
                     TableLayout.LayoutParams.WRAP_CONTENT);
@@ -212,11 +212,27 @@ public class TabFragment2 extends Fragment implements Updatable{
             tr.addView(tv);
             tr.addView(tv2);
             tr.addView(tv4);
+            Context context = this.getContext();
+
             if (i > -1) {
                 tr.setOnLongClickListener(new View.OnLongClickListener() {
                     @Override
                     public boolean onLongClick(View view) {
-                        return false;
+                        PopupMenu popupMenu = new PopupMenu(context,tr);
+                        popupMenu.getMenuInflater().inflate(R.menu.poupup_menu, popupMenu.getMenu());
+                        popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                            @Override
+                            public boolean onMenuItemClick(MenuItem item) {
+                                MyService myService = new MyService(appDb.expenseDao());
+                                myService.deleteCurrentExpenseRow(tr.getId());
+                                Toast.makeText(context, "Expense deleted", Toast.LENGTH_SHORT).show();
+                                startLoadData();
+                                return true;
+                            }
+                        });
+
+                        popupMenu.show();
+                        return true;
                     }
                 });
             }
@@ -303,10 +319,11 @@ public class TabFragment2 extends Fragment implements Updatable{
 
     @RequiresApi(api = Build.VERSION_CODES.N)
     private List<Expense> readExpenses() {
-        GetAsyncTask asyncTask = new GetAsyncTask(appDb.expenseDao());
         List<Expense> expenses = new ArrayList<>();
         String [][]expenseArray;
         try {
+            DateRange dateRange = new MyService(appDb.dateRangeDao()).getDateRange();
+            GetAsyncTask asyncTask = new GetAsyncTask(appDb.expenseDao(),dateRange);
             expenses = (List<Expense>)asyncTask.execute("",new Expense()).get();
             expenses = expenses != null ? expenses : new ArrayList<>();
         } catch (ExecutionException e) {
@@ -320,8 +337,10 @@ public class TabFragment2 extends Fragment implements Updatable{
     private static class GetAsyncTask extends AsyncTask<Object, Void, Object> {
         private MessageDao messageDao;
         private ExpenseDao expenseDao;
+        private DateRange dateRange;
 
-        GetAsyncTask(Object dao) {
+        GetAsyncTask(Object dao, DateRange dateRange) {
+            this.dateRange = dateRange;
             if(dao instanceof  MessageDao) {
                 messageDao = (MessageDao)dao;
             }
@@ -342,10 +361,10 @@ public class TabFragment2 extends Fragment implements Updatable{
                     String yearMonth = YearMonth.now().toString();
                     String currentMonth = yearMonth.substring(5);
                     String currentYear = Year.now().toString();
-                    return expenseDao.getAllExpenseByMonth(currentMonth,currentYear);
+//                    return expenseDao.getAllExpenseByMonth(currentMonth,currentYear);
+                    return expenseDao.getAllExpenseByDateRange(dateRange.fromDate.getTime(),dateRange.toDate.getTime());
                 }
 
-                //return null;
             }
             catch (Exception ex){
                 Log.e("MainActivity ",ex.getMessage());
@@ -367,7 +386,7 @@ public class TabFragment2 extends Fragment implements Updatable{
         @Override
         protected String doInBackground(Integer... params) {
             try {
-                Thread.sleep(2000);
+                Thread.sleep(1000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -377,7 +396,6 @@ public class TabFragment2 extends Fragment implements Updatable{
         @RequiresApi(api = Build.VERSION_CODES.N)
         @Override
         protected void onPostExecute(String result) {
-//            mProgressBar.hide();
             loadData();
         }
 

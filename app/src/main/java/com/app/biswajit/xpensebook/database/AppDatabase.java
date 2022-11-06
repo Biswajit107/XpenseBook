@@ -3,8 +3,10 @@ package com.app.biswajit.xpensebook.database;
 import android.content.Context;
 
 import com.app.biswajit.xpensebook.TimestampConverter;
+import com.app.biswajit.xpensebook.dao.DateRangeDao;
 import com.app.biswajit.xpensebook.dao.ExpenseDao;
 import com.app.biswajit.xpensebook.dao.MessageDao;
+import com.app.biswajit.xpensebook.entity.DateRange;
 import com.app.biswajit.xpensebook.entity.Expense;
 import com.app.biswajit.xpensebook.entity.Message;
 
@@ -16,10 +18,11 @@ import androidx.room.Room;
 import androidx.room.RoomDatabase;
 import androidx.room.TypeConverters;
 
-@Database(entities = {Message.class, Expense.class}, version = 2)
+@Database(entities = {Message.class, Expense.class, DateRange.class}, version = 2)
 public abstract class AppDatabase extends RoomDatabase {
     public abstract MessageDao messageDao();
     public abstract ExpenseDao expenseDao();
+    public abstract DateRangeDao dateRangeDao();
 
     private static volatile AppDatabase INSTANCE;
     private static final int NUMBER_OF_THREADS = 4;

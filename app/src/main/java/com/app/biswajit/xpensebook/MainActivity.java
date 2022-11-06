@@ -21,6 +21,7 @@ import com.app.biswajit.xpensebook.dao.ExpenseDao;
 import com.app.biswajit.xpensebook.dao.MessageDao;
 import com.app.biswajit.xpensebook.database.AppDatabase;
 //import com.app.biswajit.xpensebook.databinding.ActivityMainBinding;
+import com.app.biswajit.xpensebook.entity.DateRange;
 import com.app.biswajit.xpensebook.entity.Expense;
 import com.app.biswajit.xpensebook.entity.Message;
 import com.app.biswajit.xpensebook.view.MessageViewModel;
@@ -35,37 +36,15 @@ import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import androidx.appcompat.widget.Toolbar;
-import androidx.databinding.DataBindingUtil;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentManager;
-import androidx.fragment.app.FragmentTransaction;
-import androidx.lifecycle.Observer;
-import androidx.lifecycle.ViewModelProvider;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import androidx.room.Room;
 import androidx.viewpager.widget.ViewPager;
 
-import static com.app.biswajit.xpensebook.constants.Constants.AMOUNT_PARSING_KEYWORD_FROM;
-import static com.app.biswajit.xpensebook.constants.Constants.AMOUNT_PARSING_KEYWORD_TO;
 import static com.app.biswajit.xpensebook.constants.Constants.DEBIT_KEY_WORD;
-import static com.app.biswajit.xpensebook.constants.Constants.HDFC;
-import static com.app.biswajit.xpensebook.constants.Constants.HDFC_BANK;
-import static com.app.biswajit.xpensebook.constants.Constants.ICICI;
-import static com.app.biswajit.xpensebook.constants.Constants.ICICI_BANK;
-import static com.app.biswajit.xpensebook.constants.Constants.OTHER_BANK;
-import static com.app.biswajit.xpensebook.constants.Constants.PAYMENT_DESTINATION_PARSING_KEYWORD_FROM;
-import static com.app.biswajit.xpensebook.constants.Constants.PAYMENT_DESTINATION_PARSING_KEYWORD_TO;
-import static com.app.biswajit.xpensebook.constants.Constants.PAYMENT_SOURCE_PARSING_KEYWORD_FROM;
-import static com.app.biswajit.xpensebook.constants.Constants.PAYMENT_SOURCE_PARSING_KEYWORD_TO;
 import static com.app.biswajit.xpensebook.constants.Constants.PAYMENT_TYPE_KEY_WORD;
-import static com.app.biswajit.xpensebook.constants.Constants.SBI;
-import static com.app.biswajit.xpensebook.constants.Constants.SBI_BANK;
-import static com.app.biswajit.xpensebook.constants.Constants.SENDER_BANK_HDFC_0;
-import static com.app.biswajit.xpensebook.constants.Constants.SENDER_BANK_HDFC_1;
 
 public class MainActivity extends AppCompatActivity implements MessageListener{
 
@@ -104,11 +83,6 @@ public class MainActivity extends AppCompatActivity implements MessageListener{
             public void onTabSelected(TabLayout.Tab tab) {
                 refreshTab(tab.getPosition(),viewPager);// create a method
                 viewPager.setCurrentItem(tab.getPosition());
-//                if (tab.getPosition() == 0) {
-//
-//                    viewPager.getAdapter().notifyDataSetChanged();
-//
-//                }
             }
 
             @Override
@@ -127,14 +101,26 @@ public class MainActivity extends AppCompatActivity implements MessageListener{
         MessageReceiver.bindListener(this);
         appDb = AppDatabase.getDatabase(getApplicationContext());
 
-        MyService myService = new MyService(appDb.messageDao());
-        myService.getAllSms(this.getApplicationContext());
+        MyService myService = new MyService(appDb.dateRangeDao());
+        DateRange dateRange = null;
+        try {
+            dateRange = myService.getDateRange();
+            if(dateRange == null) {
+                dateRange = new DateRange();
+                dateRange.fromDate = new Date(MyService.firstDayOfMonth());
+                dateRange.toDate = new Date(MyService.lastDayOfMonth());
+                myService.insertDateRange(dateRange);
+            }
+
+        }
+        catch (InterruptedException |ExecutionException exception){
+            Log.e(getClass().getName(),exception.getMessage());
+        }
+
+        myService = new MyService(appDb.messageDao());
+        myService.getAllSms(this.getApplicationContext(),dateRange);
 
         processMessage();
-//        String totalExpense = readExpenses();
-//        viewPager.setOffscreenPageLimit(1);
-//        FragmentManager fragmentManager=getSupportFragmentManager();
-//        viewPager.setAdapter(new PagerAdapter(fragmentManager,3));
 
     }
 
@@ -218,6 +204,7 @@ public class MainActivity extends AppCompatActivity implements MessageListener{
         String messageContent = message.messageConent;
 
         expense.amount =  MyService.extractAmount(message.messageConent);
+        expense.deleteFlag = 0;
 
         List<String> items = Arrays.asList(message.messageConent.split("\\s* \\s*"));
 

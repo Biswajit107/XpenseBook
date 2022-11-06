@@ -7,13 +7,6 @@ import static com.app.biswajit.xpensebook.constants.Constants.ICICI_BANK;
 import static com.app.biswajit.xpensebook.constants.Constants.OTHER_BANK;
 import static com.app.biswajit.xpensebook.constants.Constants.SBI;
 import static com.app.biswajit.xpensebook.constants.Constants.SBI_BANK;
-import static com.app.biswajit.xpensebook.constants.Constants.SENDER_BANK_HDFC_0;
-import static com.app.biswajit.xpensebook.constants.Constants.SENDER_BANK_HDFC_1;
-import static com.app.biswajit.xpensebook.constants.Constants.SENDER_BANK_HDFC_3;
-import static com.app.biswajit.xpensebook.constants.Constants.SENDER_BANK_HDFC_4;
-import static com.app.biswajit.xpensebook.constants.Constants.SENDER_BANK_HDFC_5;
-import static com.app.biswajit.xpensebook.constants.Constants.SENDER_BANK_HDFC_6;
-import static com.app.biswajit.xpensebook.constants.Constants.SENDER_BANK_HDFC_7;
 
 import android.app.PendingIntent;
 import android.app.Service;
@@ -21,24 +14,21 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.IBinder;
 import android.provider.Telephony;
-import android.util.Log;
 import android.widget.Toast;
 //import android.support.v4.app.NotificationCompat;NotificationCompat
 import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -47,18 +37,28 @@ import androidx.core.app.NotificationCompat;
 
 import androidx.annotation.Nullable;
 
+import com.app.biswajit.xpensebook.dao.DateRangeDao;
 import com.app.biswajit.xpensebook.dao.ExpenseDao;
 import com.app.biswajit.xpensebook.dao.MessageDao;
-import com.app.biswajit.xpensebook.entity.Expense;
+import com.app.biswajit.xpensebook.entity.DateRange;
 import com.app.biswajit.xpensebook.entity.Message;
 
 public class MyService extends Service {
 
 
     MessageDao messageDao;
+    ExpenseDao expenseDao;
+    DateRangeDao dateRangeDao;
 
-    public MyService(MessageDao messageDao) {
-        this.messageDao = messageDao;
+    public MyService(Object dao) {
+
+        if(dao instanceof MessageDao) {
+            this.messageDao = (MessageDao) dao;
+        }else if(dao instanceof ExpenseDao){
+            this.expenseDao = (ExpenseDao) dao;
+        }else{
+            this.dateRangeDao = (DateRangeDao) dao;
+        }
     }
 
 //    @Override
@@ -101,8 +101,44 @@ public class MyService extends Service {
                 .build());
     }
 
+    public static long firstDayOfMonth(){
+        Calendar cal = Calendar.getInstance();
+        cal.set(Calendar.DAY_OF_MONTH, 1);
+        cal.set(Calendar.HOUR_OF_DAY,0);
+        cal.set(Calendar.MINUTE,0);
+        cal.set(Calendar.SECOND,0);
+        return cal.getTimeInMillis();
+    }
+
+    public static long lastDayOfMonth(){
+        Calendar cal = Calendar.getInstance();
+        cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH));
+        cal.set(Calendar.HOUR_OF_DAY,cal.getActualMaximum(Calendar.HOUR_OF_DAY));
+        cal.set(Calendar.MINUTE,cal.getActualMaximum(Calendar.MINUTE));
+        cal.set(Calendar.SECOND,cal.getActualMaximum(Calendar.SECOND));
+        return cal.getTimeInMillis();
+    }
+
+    public static Date convertToBeginningOfTheDay(Date fromDate) {
+        Calendar calStart = new GregorianCalendar();
+        calStart.setTime(fromDate);
+        calStart.set(Calendar.HOUR_OF_DAY, 0);
+        calStart.set(Calendar.MINUTE, 0);
+        calStart.set(Calendar.SECOND, 0);
+        return calStart.getTime();
+    }
+
+    public static Date convertToEndOfTheDay(Date toDate) {
+        Calendar calEnd = new GregorianCalendar();
+        calEnd.setTime(toDate);
+        calEnd.set(Calendar.HOUR_OF_DAY, calEnd.getActualMaximum(Calendar.HOUR_OF_DAY));
+        calEnd.set(Calendar.MINUTE, calEnd.getActualMaximum(Calendar.MINUTE));
+        calEnd.set(Calendar.SECOND, calEnd.getActualMaximum(Calendar.SECOND));
+        return calEnd.getTime();
+    }
+
     @RequiresApi(api = Build.VERSION_CODES.KITKAT)
-    public void getAllSms(Context context) {
+    public void getAllSms(Context context, DateRange dateRange) {
 
         ContentResolver cr = context.getContentResolver();
 
@@ -112,7 +148,8 @@ public class MyService extends Service {
         cal.set(Calendar.MINUTE,0);
         cal.set(Calendar.SECOND,0);
         Calendar currentCal = Calendar.getInstance();
-        String where = Telephony.Sms.DATE + " >= " + cal.getTimeInMillis() + " AND " + Telephony.Sms.DATE + " <= " + currentCal.getTimeInMillis() ;
+//        String where = Telephony.Sms.DATE + " >= " + cal.getTimeInMillis() + " AND " + Telephony.Sms.DATE + " <= " + currentCal.getTimeInMillis() ;
+        String where = Telephony.Sms.DATE + " >= " + dateRange.fromDate.getTime() + " AND " + Telephony.Sms.DATE + " <= " + dateRange.toDate.getTime() ;
         String order = "date ";
         Cursor c = cr.query(Telephony.Sms.CONTENT_URI, null, where, null, order);
         int totalSMS = 0;
@@ -177,6 +214,28 @@ public class MyService extends Service {
                 || (message.contains("paying") && message.contains("NetBanking"))
                 || (message.contains("withdrawn") && message.contains("Debit Card"))
                 || (message.contains("Payment") && message.contains("Debit Card")));
+    }
+
+    public DateRange getDateRange() throws ExecutionException, InterruptedException {
+
+        Callable<DateRange> callable = () -> dateRangeDao.getDateRange();
+
+        Future<DateRange> future = Executors.newSingleThreadExecutor().submit(callable);
+
+        return future.get();
+    }
+
+    public Boolean insertDateRange(DateRange dateRange) throws ExecutionException, InterruptedException {
+
+        Callable<Boolean> callable = () -> {
+            dateRangeDao.deleteDateRange();
+            dateRangeDao.insertAll(dateRange);
+            return true;
+        };
+
+        Future<Boolean> future = Executors.newSingleThreadExecutor().submit(callable);
+
+        return future.get();
     }
 
     public Message getMessage(Message msg) throws ExecutionException, InterruptedException {
@@ -254,4 +313,21 @@ public class MyService extends Service {
         return  "notfound";
     }
 
+    public void deleteCurrentExpenseRow(int id) {
+        Callable<Boolean> callable = () -> {
+            expenseDao.softDeleteExpense(id);
+            return true;
+        };
+
+        Executors.newSingleThreadExecutor().submit(callable);
+    }
+
+    public void resetDeleteFlagInExpense() {
+        Callable<Boolean> callable = () -> {
+            expenseDao.resetDeleteFlag();
+            return true;
+        };
+
+        Executors.newSingleThreadExecutor().submit(callable);
+    }
 }

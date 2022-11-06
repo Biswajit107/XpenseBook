@@ -1,39 +1,44 @@
 package com.app.biswajit.xpensebook;
 
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.SharedPreferences;
+import android.app.ProgressDialog;
+import android.graphics.Typeface;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 
 import androidx.annotation.RequiresApi;
+import androidx.core.util.Pair;
 import androidx.fragment.app.Fragment;
 
 import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.app.biswajit.xpensebook.dao.ExpenseDao;
 import com.app.biswajit.xpensebook.dao.MessageDao;
 import com.app.biswajit.xpensebook.database.AppDatabase;
+import com.app.biswajit.xpensebook.entity.DateRange;
 import com.app.biswajit.xpensebook.entity.Expense;
 import com.app.biswajit.xpensebook.entity.Message;
+import com.google.android.material.datepicker.MaterialDatePicker;
 
+import java.text.DateFormat;
+import java.text.NumberFormat;
+import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.Year;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
-import static android.content.Context.MODE_PRIVATE;
-import static com.app.biswajit.xpensebook.constants.Constants.AMOUNT_PARSING_KEYWORD_FROM;
-import static com.app.biswajit.xpensebook.constants.Constants.AMOUNT_PARSING_KEYWORD_TO;
 import static com.app.biswajit.xpensebook.constants.Constants.DEBIT_KEY_WORD;
 import static com.app.biswajit.xpensebook.constants.Constants.PAYMENT_TYPE_KEY_WORD;
 
@@ -58,8 +63,13 @@ public class TabFragment1 extends Fragment implements Updatable{
     private String mParam1;
     private String mParam2;
     public static final String MY_SHARED_PREFERENCES = "MySharedPrefs" ;
-    View rootview;
+    private View rootview;
+    private Button recalButton;
+    private Button datePicker;
+    private TextView dateRangeTV;
+    private ProgressDialog mProgressBar;
 
+    private static final NumberFormat PRICE_FORMATTER = NumberFormat.getNumberInstance();
 
     public TabFragment1() {
         // Required empty public constructor
@@ -99,9 +109,75 @@ public class TabFragment1 extends Fragment implements Updatable{
                              Bundle savedInstanceState) {
         setHasOptionsMenu(true);
         rootview = inflater.inflate(R.layout.tab_fragment1, container, false);
+        mProgressBar = new ProgressDialog(this.getContext());
 
         update();
         // Inflate the layout for this fragment
+        recalButton = rootview.findViewById(R.id.recalButton);
+        recalButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                MyService myService = new MyService(appDb.expenseDao());
+                myService.resetDeleteFlagInExpense();
+                update();
+                Toast.makeText(getContext(),"Expense updated",Toast.LENGTH_SHORT).show();
+
+            }
+        });
+
+        datePicker = rootview.findViewById(R.id.datePicker);
+        dateRangeTV = rootview.findViewById(R.id.dataRange);
+
+        try {
+            DateRange dateRange = new MyService(appDb.dateRangeDao()).getDateRange();
+            DateFormat formatter = new SimpleDateFormat("dd/MMM/yyyy");
+            dateRangeTV.setText(formatter.format(dateRange.fromDate) + "  -  " + formatter.format(dateRange.toDate));
+            dateRangeTV.setGravity(Gravity.CENTER);
+            dateRangeTV.setTextSize(20);
+            dateRangeTV.setTypeface(null, Typeface.BOLD);
+
+        } catch (ExecutionException | InterruptedException e) {
+            Log.e(getTag(), e.toString());
+        }
+
+        datePicker.setOnClickListener(new View.OnClickListener() {
+              @RequiresApi(api = Build.VERSION_CODES.O)
+              @Override
+              public void onClick(View view) {
+
+                  // getSupportFragmentManager() to
+                  // interact with the fragments
+                  // associated with the material design
+                  // date picker tag is to get any error
+                  // in logcat
+                  MaterialDatePicker<Pair<Long, Long>> dateRangePicker = MaterialDatePicker.Builder
+                          .dateRangePicker()
+                          .setTitleText("Select Date")
+                          .build();
+                  dateRangePicker.show(getActivity().getSupportFragmentManager(), "date_range_picker");
+
+                  dateRangePicker.addOnPositiveButtonClickListener( datePicked -> {
+                      Date fromDate = new Date(datePicked.first);
+                      Date toDate = new Date(datePicked.second);
+                      DateRange dateRange = new DateRange();
+                      dateRange.fromDate = MyService.convertToBeginningOfTheDay(fromDate);
+                      dateRange.toDate = MyService.convertToEndOfTheDay(toDate);
+                      try {
+                          new MyService(appDb.dateRangeDao()).insertDateRange(dateRange);
+
+                      } catch (ExecutionException | InterruptedException e) {
+                          Log.e(getTag(), e.toString());
+                      }
+
+                      DateFormat formatter = new SimpleDateFormat("dd/MMM/yyyy");
+                      dateRangeTV.setText(formatter.format(fromDate) + "  -  " + formatter.format(toDate));
+                      dateRangeTV.setGravity(Gravity.CENTER);
+                      dateRangeTV.setTextSize(20);
+                      dateRangeTV.setTypeface(null, Typeface.BOLD);
+                      Toast.makeText(getContext(),formatter.format(fromDate) + " - " + formatter.format(toDate),Toast.LENGTH_SHORT).show();
+                  });
+              }
+        });
         return rootview;
     }
 
@@ -119,13 +195,16 @@ public class TabFragment1 extends Fragment implements Updatable{
     private static AppDatabase appDb;
     @RequiresApi(api = Build.VERSION_CODES.N)
     private String readExpenses() {
-        GetAsyncTask asyncTask = new GetAsyncTask(appDb.expenseDao());
         List<Expense> expenses = new ArrayList<>();
         try {
+            DateRange dateRange = new MyService(appDb.dateRangeDao()).getDateRange();
+            GetAsyncTask asyncTask = new GetAsyncTask(appDb.expenseDao(), dateRange);
             expenses = (List<Expense>)asyncTask.execute("",new Expense()).get();
-            String totalExpense = expenses != null ? String.valueOf(expenses.stream().mapToDouble(i->i.amount).sum()) : "";
+
+//            String totalExpense = expenses != null ? String.valueOf(expenses.stream().mapToDouble(i->i.amount).sum()) : "";
+//            String totalExpense = expenses != null ? String.format("%.2f",expenses.stream().mapToDouble(i->i.amount).sum()) : "";
+            String totalExpense = expenses != null ? "₹ " + PRICE_FORMATTER.format(expenses.stream().mapToDouble(i->i.amount).sum()) : "";
             return totalExpense;
-            //binding.setTotalDebited(totalExpense);
         } catch (ExecutionException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
@@ -134,7 +213,7 @@ public class TabFragment1 extends Fragment implements Updatable{
         return "";
     }
     private void processMessage() {
-        GetAsyncTask asyncTask = new GetAsyncTask(appDb.messageDao());
+        GetAsyncTask asyncTask = new GetAsyncTask(appDb.messageDao(), null);
         List<Message> messages = new ArrayList<>();
         try {
             messages = (List<Message>) asyncTask.execute("", new Message()).get();
@@ -177,6 +256,7 @@ public class TabFragment1 extends Fragment implements Updatable{
         String messageContent = message.messageConent;
 
         expense.amount =  MyService.extractAmount(message.messageConent);
+        expense.deleteFlag = 0;
 
         List<String> items = Arrays.asList(message.messageConent.split("\\s* \\s*"));
 
@@ -250,7 +330,6 @@ public class TabFragment1 extends Fragment implements Updatable{
                     expenseDao.insertAll(expenses);
                 }
                 Log.d(getClass().getSimpleName(), "do in background 1 ");
-                //return null;
             }
             catch (Exception ex){
                 Log.e("MainActivity ",ex.getMessage());
@@ -298,8 +377,10 @@ public class TabFragment1 extends Fragment implements Updatable{
     private static class GetAsyncTask extends AsyncTask<Object, Void, Object> {
         private MessageDao messageDao;
         private ExpenseDao expenseDao;
+        private DateRange dateRange;
 
-        GetAsyncTask(Object dao) {
+        GetAsyncTask(Object dao, DateRange dateRange) {
+            this.dateRange = dateRange;
             if(dao instanceof  MessageDao) {
                 messageDao = (MessageDao)dao;
             }
@@ -322,10 +403,10 @@ public class TabFragment1 extends Fragment implements Updatable{
                     String yearMonth = YearMonth.now().toString();
                     String currentMonth = yearMonth.substring(5);
                     String currentYear = Year.now().toString();
-                    return expenseDao.getAllExpenseByMonth(currentMonth,currentYear);
+//                    return expenseDao.getAllExpenseByMonth(currentMonth,currentYear);
+                    return expenseDao.getAllExpenseByDateRange(dateRange.fromDate.getTime(),dateRange.toDate.getTime());
                 }
 
-                //return null;
             }
             catch (Exception ex){
                 Log.e("MainActivity ",ex.getMessage());
