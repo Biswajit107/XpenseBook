@@ -1,6 +1,7 @@
 package com.app.biswajit.xpensebook;
 
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.graphics.Typeface;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -30,9 +31,6 @@ import com.google.android.material.datepicker.MaterialDatePicker;
 import java.text.DateFormat;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
-import java.time.LocalDate;
-import java.time.Year;
-import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -68,6 +66,7 @@ public class TabFragment1 extends Fragment implements Updatable{
     private Button datePicker;
     private TextView dateRangeTV;
     private ProgressDialog mProgressBar;
+    private TextView textView;
 
     private static final NumberFormat PRICE_FORMATTER = NumberFormat.getNumberInstance();
 
@@ -101,6 +100,8 @@ public class TabFragment1 extends Fragment implements Updatable{
             mParam1 = getArguments().getString(ARG_PARAM1);
             mParam2 = getArguments().getString(ARG_PARAM2);
         }
+        mProgressBar = new ProgressDialog(this.getContext());
+
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -109,7 +110,6 @@ public class TabFragment1 extends Fragment implements Updatable{
                              Bundle savedInstanceState) {
         setHasOptionsMenu(true);
         rootview = inflater.inflate(R.layout.tab_fragment1, container, false);
-        mProgressBar = new ProgressDialog(this.getContext());
 
         update();
         // Inflate the layout for this fragment
@@ -164,6 +164,11 @@ public class TabFragment1 extends Fragment implements Updatable{
                       dateRange.toDate = MyService.convertToEndOfTheDay(toDate);
                       try {
                           new MyService(appDb.dateRangeDao()).insertDateRange(dateRange);
+                          mProgressBar.setCancelable(false);
+                          mProgressBar.setMessage("Updating Expenses..");
+                          mProgressBar.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+                          mProgressBar.show();
+                          reCalculate(getContext(), dateRange);
 
                       } catch (ExecutionException | InterruptedException e) {
                           Log.e(getTag(), e.toString());
@@ -188,7 +193,7 @@ public class TabFragment1 extends Fragment implements Updatable{
         Log.i("Fragment1","Inside Fragment1");
         processMessage();
         String expense = readExpenses();
-        TextView textView = (TextView)rootview.findViewById(R.id.totalExpense);
+        textView = (TextView)rootview.findViewById(R.id.totalExpense);
         textView.setText(expense);
 
     }
@@ -201,8 +206,6 @@ public class TabFragment1 extends Fragment implements Updatable{
             GetAsyncTask asyncTask = new GetAsyncTask(appDb.expenseDao(), dateRange);
             expenses = (List<Expense>)asyncTask.execute("",new Expense()).get();
 
-//            String totalExpense = expenses != null ? String.valueOf(expenses.stream().mapToDouble(i->i.amount).sum()) : "";
-//            String totalExpense = expenses != null ? String.format("%.2f",expenses.stream().mapToDouble(i->i.amount).sum()) : "";
             String totalExpense = expenses != null ? "₹ " + PRICE_FORMATTER.format(expenses.stream().mapToDouble(i->i.amount).sum()) : "";
             return totalExpense;
         } catch (ExecutionException e) {
@@ -251,6 +254,7 @@ public class TabFragment1 extends Fragment implements Updatable{
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     private Expense parseMessageAndPrepareExpense(Message message) {
         Expense expense = new Expense();
         String messageContent = message.messageConent;
@@ -299,7 +303,7 @@ public class TabFragment1 extends Fragment implements Updatable{
 
         }
 
-        expense.paymentDestination = parsedString;
+        expense.paymentDestination = new MyService().getVendor(messageContent, getContext());
         expense.paymentType = messageContent.contains(PAYMENT_TYPE_KEY_WORD) || messageContent.contains("spent") || messageContent.contains("paying") ? DEBIT_KEY_WORD : "";
         expense.paymentAt = message.messageRecivedAt;
         expense.messageId = message.mid;
@@ -357,8 +361,6 @@ public class TabFragment1 extends Fragment implements Updatable{
             try {
                 if(params[1] instanceof Message) {
                     List<Integer> messageIdList = (List<Integer>) params[0];
-                    //int []messageIds = messageIdList.stream().mapToInt(Integer::intValue).toArray();
-
                     messageDao.updateMessage(1,messageIdList); // This line throws the exception
                 }
                 else if(params[1] instanceof Expense){
@@ -398,12 +400,6 @@ public class TabFragment1 extends Fragment implements Updatable{
                     return messageDao.findByMessageProcessed(); // This line throws the exception
                 }
                 else if(params[1] instanceof Expense){
-                    LocalDate currentdate = LocalDate.now();
-                    //String currentMonth = currentdate.getMonthValue() < 10 ? "0" + String.valueOf(currentdate.getMonthValue()) : String.valueOf(currentdate.getMonthValue()) ;
-                    String yearMonth = YearMonth.now().toString();
-                    String currentMonth = yearMonth.substring(5);
-                    String currentYear = Year.now().toString();
-//                    return expenseDao.getAllExpenseByMonth(currentMonth,currentYear);
                     return expenseDao.getAllExpenseByDateRange(dateRange.fromDate.getTime(),dateRange.toDate.getTime());
                 }
 
@@ -412,6 +408,53 @@ public class TabFragment1 extends Fragment implements Updatable{
                 Log.e("MainActivity ",ex.getMessage());
             }
             return null;
+        }
+    }
+
+    public void reCalculate(Context context, DateRange dateRange) {
+        mProgressBar.setCancelable(false);
+        mProgressBar.setMessage("Updating Expenses..");
+        mProgressBar.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+        mProgressBar.show();
+        new LoadDataTask(context, dateRange,mProgressBar).execute(0);
+    }
+    class LoadDataTask extends AsyncTask<Integer, Integer, String> {
+
+        Context context;
+        DateRange dateRange;
+        ProgressDialog mProgressBar;
+        public LoadDataTask(Context context, DateRange dateRange, ProgressDialog mProgressBar) {
+            this.context = context;
+            this.dateRange = dateRange;
+            this.mProgressBar = mProgressBar;
+        }
+
+        @Override
+        protected String doInBackground(Integer... params) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            return "Task Completed.";
+        }
+
+        @RequiresApi(api = Build.VERSION_CODES.N)
+        @Override
+        protected void onPostExecute(String result) {
+            new MyService(appDb).recalculate(getContext(), dateRange, mProgressBar);
+            String expense = readExpenses();
+            TextView textView = (TextView)rootview.findViewById(R.id.totalExpense);
+            textView.setText(expense);
+            mProgressBar.hide();
+        }
+
+        @Override
+        protected void onPreExecute() {
+        }
+
+        @Override
+        protected void onProgressUpdate(Integer... values) {
         }
     }
 

@@ -102,8 +102,8 @@
 
     <Button
         android:id="@+id/recalButton"
-        android:layout_width="100dp"
-        android:layout_height="70dp"
+        android:layout_width="43dp"
+        android:layout_height="60dp"
         android:layout_marginStart="64dp"
         android:layout_marginLeft="64dp"
         android:layout_marginBottom="344dp"

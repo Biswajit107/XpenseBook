@@ -32,4 +32,7 @@ public interface MessageDao {
 
     @Query("SELECT * FROM message WHERE message_id IN (:msgId)")
     Message findByMsgId(int msgId);
+
+    @Query("SELECT * FROM message WHERE mid IN (:mid)")
+    Message findBymId(int mid);
 }

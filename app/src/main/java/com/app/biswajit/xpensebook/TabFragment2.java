@@ -155,6 +155,16 @@ public class TabFragment2 extends Fragment implements Updatable{
                 textSpacer.setText("");
             }
 
+            String msgContent = null;
+            try {
+                Message msg = new MyService(appDb.messageDao()).getMessageById(row.messageId);
+                msgContent = msg.messageConent;
+            } catch (ExecutionException e) {
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
             // data columns
             //1st column
             final TextView tv = new TextView(this.getContext());
@@ -180,7 +190,7 @@ public class TabFragment2 extends Fragment implements Updatable{
             tv2.setPadding(5, 15, 0, 15);
             tv2.setBackgroundColor(Color.parseColor("#ffffff"));
             tv2.setTextColor(Color.parseColor("#000000"));
-            tv2.setText(row.paymentDestination);
+            tv2.setText(msgContent);
 
 
             //4th column

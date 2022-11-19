@@ -29,6 +29,8 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.tabs.TabLayout;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.Year;
@@ -159,6 +161,7 @@ public class MainActivity extends AppCompatActivity implements MessageListener{
         return "";
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     private void processMessage() {
         GetAsyncTask asyncTask = new GetAsyncTask(appDb.messageDao());
         List<Message> messages = new ArrayList<>();
@@ -199,6 +202,7 @@ public class MainActivity extends AppCompatActivity implements MessageListener{
 
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     private Expense parseMessageAndPrepareExpense(Message message) {
         Expense expense = new Expense();
         String messageContent = message.messageConent;
@@ -247,18 +251,7 @@ public class MainActivity extends AppCompatActivity implements MessageListener{
 
         }
 
-        expense.paymentDestination = parsedString;
-
-
-//        expense.amount = Double.parseDouble(messageContent.substring(beginIndex,offset).trim());
-//
-//        beginIndex = messageContent.indexOf(PAYMENT_SOURCE_PARSING_KEYWORD_FROM) + PAYMENT_SOURCE_PARSING_KEYWORD_FROM.length();
-//        offset = messageContent.indexOf(PAYMENT_SOURCE_PARSING_KEYWORD_TO) - 1 ;
-//        expense.paymentSource = messageContent.substring(beginIndex,offset).trim();
-//
-//        beginIndex = messageContent.indexOf(PAYMENT_DESTINATION_PARSING_KEYWORD_FROM) + PAYMENT_DESTINATION_PARSING_KEYWORD_FROM.length();
-//        offset = messageContent.indexOf(PAYMENT_DESTINATION_PARSING_KEYWORD_TO) - 1 ;
-//        expense.paymentDestination = message.bankName + " : " + messageContent.substring(beginIndex,offset).trim();
+        expense.paymentDestination = new MyService().getVendor(message.messageConent, getApplicationContext());
 
         expense.paymentType = messageContent.contains(PAYMENT_TYPE_KEY_WORD) || messageContent.contains("spent") || messageContent.contains("paying") ? DEBIT_KEY_WORD : "";
         expense.paymentAt = message.messageRecivedAt;
@@ -272,17 +265,17 @@ public class MainActivity extends AppCompatActivity implements MessageListener{
     public void messageReceived(SmsMessage smsMessage) {
         String sender = smsMessage.getOriginatingAddress();
         String message = smsMessage.getMessageBody();
-        if(MyService.shouldConsider(message, sender)){
-
-            Message receivedSmsMessage = new Message();
-
-            receivedSmsMessage.bankName = MyService.getBankName(sender);
-            receivedSmsMessage.messageConent = message;
-            receivedSmsMessage.messageRecivedAt = new Timestamp(System.currentTimeMillis());
-            new InsertAsyncTask(appDb.messageDao()).execute(receivedSmsMessage,new Message());
-
-            Toast.makeText(this, "New Message Received and stored in DB", Toast.LENGTH_SHORT).show();
-        }
+//        if(MyService.shouldConsider(message, sender)){
+//
+//            Message receivedSmsMessage = new Message();
+//
+//            receivedSmsMessage.bankName = MyService.getBankName(sender);
+//            receivedSmsMessage.messageConent = message;
+//            receivedSmsMessage.messageRecivedAt = new Timestamp(System.currentTimeMillis());
+//            new InsertAsyncTask(appDb.messageDao()).execute(receivedSmsMessage,new Message());
+//
+//            Toast.makeText(this, "New Message Received and stored in DB", Toast.LENGTH_SHORT).show();
+//        }
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -343,15 +336,12 @@ public class MainActivity extends AppCompatActivity implements MessageListener{
             try {
                 if(params[1] instanceof Message) {
                     List<Integer> messageIdList = (List<Integer>) params[0];
-                    //int []messageIds = messageIdList.stream().mapToInt(Integer::intValue).toArray();
-
                     messageDao.updateMessage(1,messageIdList); // This line throws the exception
                 }
                 else if(params[1] instanceof Expense){
 
                 }
                 Log.d(getClass().getSimpleName(), "do in background 1 ");
-                //return null;
             }
             catch (Exception ex){
                 Log.e("MainActivity ",ex.getMessage());
@@ -382,14 +372,8 @@ public class MainActivity extends AppCompatActivity implements MessageListener{
                     return messageDao.findByMessageProcessed(); // This line throws the exception
                 }
                 else if(params[1] instanceof Expense){
-                    //LocalDate currentdate = LocalDate.now();
-//                    String currentMonth = currentdate.getMonthValue() < 10 ? "0" + String.valueOf(currentdate.getMonthValue()) : String.valueOf(currentdate.getMonthValue()) ;
-//                    String currentMonth = YearMonth.now().toString();
-//                    String currentYear = Year.now().toString();
-//                    return expenseDao.getAllExpenseByMonth(currentMonth,currentYear);
                 }
 
-                //return null;
             }
             catch (Exception ex){
                 Log.e("MainActivity ",ex.getMessage());
@@ -423,10 +407,6 @@ public class MainActivity extends AppCompatActivity implements MessageListener{
     @Override
     public void onResume() {
         super.onResume();
-//        if(binding != null && appDb != null) {
-//            Message message = appDb.messageDao().getAll().getValue();
-//            binding.setMessage(message);
-//        }
         Log.d(getClass().getSimpleName(), "onResume()");
     }
 
@@ -441,12 +421,6 @@ public class MainActivity extends AppCompatActivity implements MessageListener{
     @Override
     public void onRestart() {
         super.onRestart();
-
-//        messageViewModel = new ViewModelProvider(this).get(MessageViewModel.class);
-//        messageViewModel.getMessage().observe(this, message -> {
-//            binding.setMessage(message);
-//        });
-        //messageViewModel.getAllMessage();
         Log.d(getClass().getSimpleName(), "onRestart()");
     }
 

@@ -114,7 +114,7 @@ public class TabFragment3 extends Fragment implements Updatable{
         tv1.setLayoutParams(new
                 LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.MATCH_PARENT));
         tv1.setPadding(15,0,0,0);
-        tv1.setText("R");
+        tv1.setText("Test4");
         tv1.setTextSize(10);
 
         layout1.addView(view1);
@@ -138,7 +138,7 @@ public class TabFragment3 extends Fragment implements Updatable{
         tv2.setLayoutParams(new
                 LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.MATCH_PARENT));
         tv2.setPadding(15,0,0,0);
-        tv2.setText("Python");
+        tv2.setText("Test3");
         tv2.setTextSize(10);
 
         layout2.addView(view2);
@@ -157,7 +157,7 @@ public class TabFragment3 extends Fragment implements Updatable{
         tv3.setLayoutParams(new
                 LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.MATCH_PARENT));
         tv3.setPadding(15,0,0,0);
-        tv3.setText("C++");
+        tv3.setText("Test2");
         tv3.setTextSize(10);
 
         layout3.addView(view3);
@@ -178,7 +178,7 @@ public class TabFragment3 extends Fragment implements Updatable{
         tv4.setLayoutParams(new
                 LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.MATCH_PARENT));
         tv4.setPadding(15,0,0,0);
-        tv4.setText("Java");
+        tv4.setText("Test1");
         tv4.setTextSize(10);
 
         layout4.addView(view4);
@@ -195,22 +195,22 @@ public class TabFragment3 extends Fragment implements Updatable{
         // Set the data and color to the pie chart
         pieChart.addPieSlice(
                 new PieModel(
-                        "R",
+                        "Test4",
                         Integer.parseInt("10"),
                         Color.parseColor("#FFA726")));
         pieChart.addPieSlice(
                 new PieModel(
-                        "Python",
+                        "Test3",
                         Integer.parseInt("20"),
                         Color.parseColor("#66BB6A")));
         pieChart.addPieSlice(
                 new PieModel(
-                        "C++",
+                        "Test2",
                         Integer.parseInt("40"),
                         Color.parseColor("#EF5350")));
         pieChart.addPieSlice(
                 new PieModel(
-                        "Java",
+                        "Test1",
                         Integer.parseInt("30"),
                         Color.parseColor("#29B6F6")));
 
